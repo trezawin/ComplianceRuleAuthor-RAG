@@ -16,7 +16,7 @@ RAG pipeline scaffold to extract enforceable obligations from the HKMA Anti‑Mo
 ## Quick start
 1) Create a virtualenv and install deps:
 ```bash
-python -m venv .venv
+python3.11 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
@@ -47,6 +47,10 @@ uvicorn src.server:app --reload --port 8000
 ```
 Then POST to `/extract` with `{"query": "...", "top_k": 8}`.
 
+## Common pitfalls
+- If you hit `Client.__init__() got an unexpected keyword argument 'proxies'` from `openai`, upgrade the HTTP stack in your venv:  
+  `pip install --upgrade "openai>=1.44.0" "httpx>=0.25,<0.28" "httpcore>=1.0.0"`
+- Ensure `OPENAI_API_KEY` is set (shell export or `.env`) before running commands without `--dry_run`.
 ## Notes
 - Chunker preserves section headings and citations; tune `--min_tokens/--max_tokens` as needed.
 - Hybrid retrieval combines semantic + BM25; adjust weights in `src/pipeline.py`.

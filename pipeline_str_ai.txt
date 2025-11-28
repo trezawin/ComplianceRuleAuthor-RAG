@@ -1,0 +1,56 @@
+Using rewritten query for retrieval and prompt building.
+Original query: suspicious transaction reporting duties
+Rewritten query used for RAG:
+Task:
+You work as a senior AML compliance auditor analysing legal obligations in the Hong Kong Anti-Money Laundering and 
+Counter-Terrorist Financing Ordinance (Cap. 615) and ERC-3643 concepts.
+Based on the user's query, you must extract relevant, enforceable obligations
+from the legal text provided.
+
+User query:
+"""suspicious transaction reporting duties"""
+
+Instructions:
+- Focus only on obligations that are operational and enforceable.
+- Ignore general background or high-level policy statements unless needed.
+- Base all findings strictly on the provided text.
+
+Required output format (JSON):
+[
+  {
+    "obligation_id": "CDD-001",
+    "trigger": "<when the obligation is activated>",
+    "action": "<what must be done>",
+    "subject": "<who must act>",
+    "references": ["<section or paragraph number>"]
+  },
+  ...
+]
+
+Return ONLY the JSON array, with no extra explanation.
+LLM response:
+```json
+[
+  {
+    "provision": "3(1)(d)",
+    "severity": "Very High",
+    "reinforcement_type": "Must-have",
+    "compliance_objective": "Report suspicious transactions",
+    "feasibility": "Off-chain",
+    "explanation": "A financial institution or a DNFBP must carry out customer due diligence measures when it suspects 
+that the customer or the customer’s account is involved in money laundering or terrorist financing.",
+    "erc_3643": "reportSuspiciousTransaction()"
+  },
+  {
+    "provision": "3(1)(e)",
+    "severity": "Very High",
+    "reinforcement_type": "Must-have",
+    "compliance_objective": "Verify customer information",
+    "feasibility": "Off-chain",
+    "explanation": "A financial institution or a DNFBP must carry out customer due diligence measures when it doubts 
+the veracity or adequacy of any information previously obtained for the purpose of identifying the customer or 
+verifying the customer’s identity.",
+    "erc_3643": "verifyCustomerInformation()"
+  }
+]
+```

@@ -1,0 +1,86 @@
+Using rewritten query for retrieval and prompt building.
+Original query: record-keeping obligations
+Rewritten query used for RAG:
+Task:
+You work as a senior AML compliance auditor analysing legal obligations in the Hong Kong Anti-Money Laundering and 
+Counter-Terrorist Financing Ordinance (Cap. 615) and ERC-3643 concepts.
+Based on the user's query, you must extract relevant, enforceable obligations
+from the legal text provided.
+
+User query:
+"""record-keeping obligations"""
+
+Instructions:
+- Focus only on obligations that are operational and enforceable.
+- Ignore general background or high-level policy statements unless needed.
+- Base all findings strictly on the provided text.
+
+Required output format (JSON):
+[
+  {
+    "obligation_id": "CDD-001",
+    "trigger": "<when the obligation is activated>",
+    "action": "<what must be done>",
+    "subject": "<who must act>",
+    "references": ["<section or paragraph number>"]
+  },
+  ...
+]
+
+Return ONLY the JSON array, with no extra explanation.
+LLM response:
+```json
+[
+  {
+    "provision": "20",
+    "severity": "Very High",
+    "reinforcement_type": "Must-have",
+    "compliance_objective": "Keep records of transactions and customer identification for AML compliance.",
+    "feasibility": "Off-chain",
+    "explanation": "A financial institution or a DNFBP must keep the original or a copy of documents and a record of 
+data and information related to each transaction and customer identification for specified periods.",
+    "erc_3643": "recordTransaction(transactionId, document, data); recordCustomer(customerId, document, data);"
+  },
+  {
+    "provision": "20(2)",
+    "severity": "Very High",
+    "reinforcement_type": "Must-have",
+    "compliance_objective": "Maintain transaction records for a minimum of 5 years.",
+    "feasibility": "Off-chain",
+    "explanation": "Records related to transactions must be kept for at least 5 years from the date of transaction 
+completion.",
+    "erc_3643": "setRecordRetention(transactionId, 5 years);"
+  },
+  {
+    "provision": "20(3)",
+    "severity": "Very High",
+    "reinforcement_type": "Must-have",
+    "compliance_objective": "Maintain customer records for the duration of the business relationship and for 5 years 
+after termination.",
+    "feasibility": "Off-chain",
+    "explanation": "Records related to customer identification must be kept throughout the business relationship and 
+for at least 5 years after it ends.",
+    "erc_3643": "setCustomerRecordRetention(customerId, 5 years);"
+  },
+  {
+    "provision": "20(4)",
+    "severity": "High",
+    "reinforcement_type": "Must-have",
+    "compliance_objective": "Comply with extended record-keeping requirements as specified by authorities.",
+    "feasibility": "Off-chain",
+    "explanation": "A relevant authority may require a financial institution or DNFBP to keep records for a longer 
+period if deemed necessary for investigations.",
+    "erc_3643": "extendRecordRetention(transactionId, specifiedPeriod);"
+  },
+  {
+    "provision": "20(5)",
+    "severity": "High",
+    "reinforcement_type": "Must-have",
+    "compliance_objective": "Adhere to specific record-keeping durations as mandated by authorities.",
+    "feasibility": "Off-chain",
+    "explanation": "A financial institution or DNFBP must comply with notices from relevant authorities regarding the 
+retention of records for specified periods.",
+    "erc_3643": "complyWithAuthorityNotice(noticeId);"
+  }
+]
+```

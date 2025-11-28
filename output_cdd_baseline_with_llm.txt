@@ -1,0 +1,117 @@
+Original query: customer due diligence obligations
+LLM response:
+```json
+[
+  {
+    "provision": "3(1)(a)",
+    "severity": "Very High",
+    "reinforcement_type": "Must-have",
+    "compliance_objective": "Carry out customer due diligence before 
+establishing a business relationship.",
+    "feasibility": "On-chain",
+    "explanation": "A financial institution or a DNFBP must conduct customer due
+diligence measures before establishing a business relationship with a 
+customer.",
+    "erc_3643": "function establishBusinessRelationship(customerId, 
+customerData)"
+  },
+  {
+    "provision": "3(1)(b)",
+    "severity": "Very High",
+    "reinforcement_type": "Must-have",
+    "compliance_objective": "Conduct due diligence for occasional transactions 
+above a specified amount.",
+    "feasibility": "On-chain",
+    "explanation": "Customer due diligence measures must be carried out before 
+conducting an occasional transaction involving an amount equal to or above 
+$120,000.",
+    "erc_3643": "function conductOccasionalTransaction(customerId, 
+transactionAmount)"
+  },
+  {
+    "provision": "3(1A)(a)",
+    "severity": "Very High",
+    "reinforcement_type": "Must-have",
+    "compliance_objective": "Perform due diligence for wire transfers above a 
+specified amount.",
+    "feasibility": "On-chain",
+    "explanation": "A financial institution must carry out customer due 
+diligence measures before executing a wire transfer involving an amount equal to
+or above $8,000.",
+    "erc_3643": "function verifyWireTransfer(customerId, transferAmount)"
+  },
+  {
+    "provision": "3(1A)(b)",
+    "severity": "Very High",
+    "reinforcement_type": "Must-have",
+    "compliance_objective": "Perform due diligence for virtual asset transfers 
+above a specified amount.",
+    "feasibility": "On-chain",
+    "explanation": "Customer due diligence measures must be conducted before 
+carrying out a virtual asset transfer involving an amount equal to or above 
+$8,000.",
+    "erc_3643": "function verifyVirtualAssetTransfer(customerId, assetAmount)"
+  },
+  {
+    "provision": "3(2)",
+    "severity": "High",
+    "reinforcement_type": "Must-have",
+    "compliance_objective": "Verify customer identity after establishing a 
+business relationship under specific conditions.",
+    "feasibility": "Hybrid",
+    "explanation": "Verification of a customer's identity may occur after 
+establishing a business relationship if necessary for normal business conduct 
+and risks are effectively managed.",
+    "erc_3643": "function verifyIdentityAfterRelationship(customerId)"
+  },
+  {
+    "provision": "3(4)(a)",
+    "severity": "Very High",
+    "reinforcement_type": "Must-not-have",
+    "compliance_objective": "Prevent establishment of business relationships 
+without due diligence.",
+    "feasibility": "On-chain",
+    "explanation": "A financial institution or DNFBP must not establish a 
+business relationship if unable to comply with customer due diligence 
+requirements.",
+    "erc_3643": "function preventBusinessRelationship(customerId)"
+  },
+  {
+    "provision": "3(4)(b)",
+    "severity": "Very High",
+    "reinforcement_type": "Must-not-have",
+    "compliance_objective": "Terminate business relationships if due diligence 
+cannot be performed.",
+    "feasibility": "On-chain",
+    "explanation": "If a financial institution or DNFBP has already established 
+a business relationship but cannot comply with due diligence, it must terminate 
+the relationship as soon as practicable.",
+    "erc_3643": "function terminateBusinessRelationship(customerId)"
+  },
+  {
+    "provision": "2(1)(a)",
+    "severity": "Very High",
+    "reinforcement_type": "Must-have",
+    "compliance_objective": "Identify and verify customer identity using 
+reliable sources.",
+    "feasibility": "On-chain",
+    "explanation": "Customer due diligence measures include identifying the 
+customer and verifying their identity based on documents or information from 
+reliable sources.",
+    "erc_3643": "function identifyAndVerifyCustomer(customerId, 
+identificationData)"
+  },
+  {
+    "provision": "2(1)(b)",
+    "severity": "Very High",
+    "reinforcement_type": "Must-have",
+    "compliance_objective": "Identify and verify beneficial owners.",
+    "feasibility": "On-chain",
+    "explanation": "If there is a beneficial owner, the financial institution or
+DNFBP must identify and verify their identity to ensure knowledge of ownership 
+and control structure.",
+    "erc_3643": "function identifyAndVerifyBeneficialOwner(customerId, 
+beneficialOwnerData)"
+  }
+]
+```

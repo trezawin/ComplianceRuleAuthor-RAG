@@ -1,0 +1,118 @@
+Using rewritten query for retrieval and prompt building.
+Original query: customer due diligence obligations
+Rewritten query used for RAG:
+Task:
+You work as a senior AML compliance auditor analysing legal obligations in the 
+Hong Kong Anti-Money Laundering and Counter-Terrorist Financing Ordinance (Cap. 
+615) and ERC-3643 concepts.
+Based on the user's query, you must extract relevant, enforceable obligations
+from the legal text provided.
+
+User query:
+"""customer due diligence obligations"""
+
+Instructions:
+- Focus only on obligations that are operational and enforceable.
+- Ignore general background or high-level policy statements unless needed.
+- Base all findings strictly on the provided text.
+
+Required output format (JSON):
+[
+  {
+    "obligation_id": "CDD-001",
+    "trigger": "<when the obligation is activated>",
+    "action": "<what must be done>",
+    "subject": "<who must act>",
+    "references": ["<section or paragraph number>"]
+  },
+  ...
+]
+
+Return ONLY the JSON array, with no extra explanation.
+LLM response:
+```json
+[
+  {
+    "provision": "3(1)(a)",
+    "severity": "Very High",
+    "reinforcement_type": "Must-have",
+    "compliance_objective": "Ensure customer due diligence before establishing a
+business relationship.",
+    "feasibility": "On-chain",
+    "explanation": "A financial institution or a DNFBP must carry out customer 
+due diligence measures before establishing a business relationship with a 
+customer.",
+    "erc_3643": "requireCustomerDueDiligence()"
+  },
+  {
+    "provision": "3(1)(b)",
+    "severity": "Very High",
+    "reinforcement_type": "Must-have",
+    "compliance_objective": "Conduct due diligence for high-value 
+transactions.",
+    "feasibility": "On-chain",
+    "explanation": "Customer due diligence measures must be carried out before 
+carrying out an occasional transaction involving an amount equal to or above 
+$120,000.",
+    "erc_3643": "requireCustomerDueDiligenceForTransaction(amount)"
+  },
+  {
+    "provision": "3(1)(d)",
+    "severity": "Very High",
+    "reinforcement_type": "Must-have",
+    "compliance_objective": "Identify and mitigate risks associated with 
+suspicious activities.",
+    "feasibility": "On-chain",
+    "explanation": "Customer due diligence must be performed when there is 
+suspicion that the customer or their account is involved in money laundering or 
+terrorist financing.",
+    "erc_3643": "requireCustomerDueDiligenceOnSuspicion()"
+  },
+  {
+    "provision": "3(1)(e)",
+    "severity": "Very High",
+    "reinforcement_type": "Must-have",
+    "compliance_objective": "Verify customer information when in doubt.",
+    "feasibility": "On-chain",
+    "explanation": "Customer due diligence measures must be carried out when 
+there are doubts about the veracity or adequacy of previously obtained 
+information.",
+    "erc_3643": "requireCustomerDueDiligenceOnDoubt()"
+  },
+  {
+    "provision": "3(4)",
+    "severity": "Very High",
+    "reinforcement_type": "Must-have",
+    "compliance_objective": "Terminate relationships if due diligence cannot be 
+performed.",
+    "feasibility": "On-chain",
+    "explanation": "If a financial institution or DNFBP is unable to comply with
+customer due diligence requirements, it must not establish or must terminate the
+business relationship.",
+    "erc_3643": "terminateBusinessRelationship()"
+  },
+  {
+    "provision": "10(1)(a)",
+    "severity": "High",
+    "reinforcement_type": "Must-have",
+    "compliance_objective": "Obtain senior management approval for politically 
+exposed persons.",
+    "feasibility": "Hybrid",
+    "explanation": "Before establishing a business relationship with a 
+politically exposed person, approval from senior management must be obtained.",
+    "erc_3643": "requireSeniorManagementApproval()"
+  },
+  {
+    "provision": "10(2)",
+    "severity": "High",
+    "reinforcement_type": "Must-have",
+    "compliance_objective": "Reassess relationships with existing politically 
+exposed persons.",
+    "feasibility": "Hybrid",
+    "explanation": "If an existing customer becomes a politically exposed 
+person, the financial institution or DNFBP must obtain senior management 
+approval to continue the relationship.",
+    "erc_3643": "reassessPoliticallyExposedPerson()"
+  }
+]
+```

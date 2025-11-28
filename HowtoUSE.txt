@@ -1,0 +1,140 @@
+HOWTOUSE.TXT — AMLO RAG + Prompt Rewriter
+	1.	What’s Included
+
+	•	RAG pipeline: chunking, embedding + BM25 indexing, retrieval, and extraction of obligations from Cap. 615.
+	•	Prompt Rewriter module: rewrites user queries (heuristic offline or OpenAI LLM).
+	•	FastAPI server: /extract endpoint.
+
+⸻
+
+	2.	Requirements
+
+⸻
+
+	•	Python 3.11 or higher
+	•	Install dependencies with:
+pip install -r requirements.txt
+	•	Put the law text file (cap615.pdf / cap615.rtf / cap615.txt) inside:
+data/raw/
+	•	To use the OpenAI rewriting mode, set your API key:
+export OPENAI_API_KEY=your_key
+
+⸻
+
+	3.	Environment Setup
+
+⸻
+
+python3.11 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+
+If you are on macOS M1/M2 and encounter GPU issues, set device=“cpu” inside src/config.py.
+
+⸻
+
+	4.	Ingest the Source Text
+
+⸻
+
+python -m src.ingest –source data/raw/cap615.rtf –out data/processed/cap615.jsonl
+
+⸻
+
+	5.	Build Indexes
+
+⸻
+
+python -m src.index –chunks data/processed/cap615.jsonl –index_out data/processed/embeddings.npy –bm25_out data/processed/bm25.pkl
+
+⸻
+
+	6.	Run a Single Extraction
+
+⸻
+
+Baseline (no rewriting):
+python -m src.pipeline –query “customer due diligence obligations” –top_k 8 –dry_run
+
+Heuristic rewriting:
+python -m src.pipeline –query “customer due diligence obligations” –top_k 8 –use_rewriter –rewriter_dry_run –dry_run
+
+OpenAI rewriting (requires OPENAI_API_KEY):
+python -m src.pipeline –query “customer due diligence obligations” –top_k 8 –use_rewriter –dry_run
+
+Save output to file (example):
+python -m src.pipeline –query “customer due diligence obligations” –top_k 8 –use_rewriter –rewriter_dry_run –save output.json
+
+⸻
+
+	7.	Full Set of Test Commands (used in the project results)
+
+⸻
+
+— CUSTOMER DUE DILIGENCE (CDD) —
+Baseline:
+python -m src.pipeline –query “customer due diligence obligations” –top_k 8 > cdd_baseline_with_llm.txt
+
+Heuristic:
+python -m src.pipeline –query “customer due diligence obligations” –top_k 8 –use_rewriter –rewriter_dry_run > cdd_heuristic_with_llm.txt
+
+AI rewriting (OpenAI):
+python -m src.pipeline –query “customer due diligence obligations” –top_k 8 –use_rewriter > cdd_ai_with_llm.txt
+
+— RECORD KEEPING —
+Baseline:
+python -m src.pipeline –query “record-keeping obligations for transactions” –top_k 8 > recordkeeping_baseline_with_llm.txt
+
+Heuristic:
+python -m src.pipeline –query “record-keeping obligations for transactions” –top_k 8 –use_rewriter –rewriter_dry_run > recordkeeping_heuristic_with_llm.txt
+
+AI rewriting:
+python -m src.pipeline –query “record-keeping obligations for transactions” –top_k 8 –use_rewriter > recordkeeping_ai_with_llm.txt
+
+— SUSPICIOUS TRANSACTION REPORTING (STR) —
+Baseline:
+python -m src.pipeline –query “suspicious transaction reporting duties” –top_k 8 > str_baseline_with_llm.txt
+
+Heuristic:
+python -m src.pipeline –query “suspicious transaction reporting duties” –top_k 8 –use_rewriter –rewriter_dry_run > str_heuristic_with_llm.txt
+
+AI rewriting:
+python -m src.pipeline –query “suspicious transaction reporting duties” –top_k 8 –use_rewriter > str_ai_with_llm.txt
+
+⸻
+
+	8.	Prompt Rewriter Stand-Alone Test
+
+⸻
+
+Heuristic rewriting only:
+python -m src.prompt_rewriter –query “customer due diligence obligations” –dry_run
+
+OpenAI rewriting only:
+python -m src.prompt_rewriter –query “customer due diligence obligations”
+
+⸻
+
+	9.	Run API Server
+
+⸻
+
+uvicorn src.server:app –reload –port 8000
+
+Example API request:
+curl -X POST http://localhost:8000/extract -H “Content-Type: application/json” -d ‘{“query”: “customer due diligence obligations”, “top_k”: 8}’
+
+⸻
+
+	10.	Troubleshooting
+
+⸻
+
+	•	If OPENAI_API_KEY missing → export it or add to .env
+	•	For “proxies” errors from openai/httpx:
+pip install –upgrade “openai>=1.44.0” “httpx>=0.25,<0.28” “httpcore>=1.0.0”
+	•	On M1/M2 crashes → set device=“cpu” in src/config.py
+
+⸻
+
+End of HOWTOUSE.TXT

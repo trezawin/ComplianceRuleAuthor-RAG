@@ -42,6 +42,7 @@ Provide `OPENAI_API_KEY` (or update `LLM_PROVIDER` in `src/pipeline.py`) to actu
 python -m src.batch_extract --chunks data/processed/cap615.jsonl --out data/processed/all_rules.json
 ```
 Use `--limit 5 --dry_run` to test quickly; set `OPENAI_API_KEY` before running to perform real calls.
+Use `--offset`/`--count` to split runs into parts (e.g., run 60 contexts at a time).
 
 ERC-3643 grounding: prompts include an ERC-3643 whitelist and post-validation forces `erc_3643` to either a whitelisted function/module or `N/A (off-chain)`. Keep `erc3643_whitelist.json` current and include `erc3643.jsonl` in indexing (`--extra`) to keep mappings accurate.
 

@@ -31,9 +31,16 @@ def build_bm25(chunks: List[Dict]) -> Tuple[BM25Okapi, List[List[str]]]:
     return bm25, tokenized_corpus
 
 
-def index(chunks_path: Path, index_path: Path, bm25_path: Path) -> None:
+def index(chunks_path: Path, index_path: Path, bm25_path: Path, extra_paths: List[Path] = None) -> None:
     console.print(f"[cyan]Loading chunks from {chunks_path}")
     chunks = load_chunks(chunks_path)
+    extra_paths = extra_paths or []
+    for p in extra_paths:
+        if p.exists():
+            console.print(f"[cyan]Appending extra chunks from {p}")
+            chunks.extend(load_chunks(p))
+        else:
+            console.print(f"[yellow]Extra chunks file not found: {p}")
     texts = [c["text"] for c in chunks]
 
     embeddings = build_embeddings(texts, settings.embedding_model)
@@ -60,8 +67,9 @@ def main():
     parser.add_argument("--chunks", type=Path, default=paths.default_chunks, help="JSONL chunks produced by ingest")
     parser.add_argument("--index_out", type=Path, default=paths.default_index, help="Embeddings .npy path")
     parser.add_argument("--bm25_out", type=Path, default=paths.bm25_store, help="BM25 pickle path")
+    parser.add_argument("--extra", type=Path, nargs="*", default=[], help="Optional extra chunk files to include (e.g., ERC-3643 spec)")
     args = parser.parse_args()
-    index(args.chunks, args.index_out, args.bm25_out)
+    index(args.chunks, args.index_out, args.bm25_out, extra_paths=args.extra)
 
 
 if __name__ == "__main__":

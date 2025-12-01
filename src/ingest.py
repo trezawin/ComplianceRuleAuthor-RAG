@@ -19,6 +19,8 @@ class Chunk:
     text: str
     section: Optional[str]
     heading: Optional[str]
+    division: Optional[str]
+    subdivision: Optional[str]
     source: str
 
     def to_json(self, idx: int) -> str:
@@ -27,6 +29,8 @@ class Chunk:
             "text": self.text.strip(),
             "section": self.section,
             "heading": self.heading,
+            "division": self.division,
+            "subdivision": self.subdivision,
             "source": self.source,
             "tokens": len(self.text.split()),
         }
@@ -52,45 +56,73 @@ def read_rtf(path: Path) -> str:
 
 
 def clean(text: str) -> str:
-    # Remove repeated blank lines and stray spacing while keeping numbering.
+    # Normalize spacing while preserving paragraph breaks; fix common PDF line artifacts.
+    text = text.replace("\r", "")
+    # Join hyphenated breaks (e.g., “cust-\nomer” -> “customer”).
+    text = re.sub(r"(\w)-\s*\n\s*(\w)", r"\1\2", text)
+    # Join linebreak-split words without hyphens (e.g., “cus\nstomer” -> “customer”).
+    text = re.sub(r"(?<=\w)\n(?=\w)", " ", text)
+    # Collapse extra spaces and blank lines.
     text = re.sub(r"[ \t]+", " ", text)
     text = re.sub(r"\n{2,}", "\n\n", text)
     return text.strip()
 
 
 SECTION_PATTERN = re.compile(
-    r"(?P<header>(Section|SECTION|Sec\.?|S\.)\s+(?P<num>\d+[A-Z]?))(?P<title>[^\n]{0,120})",
+    r"^\s*(?P<num>\d+[A-Z]*)\.\s*(?P<title>[^\n]{1,300})",
     re.MULTILINE,
 )
-SCHEDULE_PATTERN = re.compile(r"(Schedule\s+(?P<num>\d+))(?P<title>[^\n]{0,120})", re.MULTILINE)
+SCHEDULE_PATTERN = re.compile(r"^\s*(Schedule\s+(?P<num>\d+))\s*(?P<title>[^\n]{1,300})", re.MULTILINE)
+DIVISION_PATTERN = re.compile(r"^\s*(Division\s+\d+[A-Za-z0-9]*\s+[—\-–]\s*[^\n]+)", re.MULTILINE)
+SUBDIVISION_PATTERN = re.compile(r"^\s*(Subdivision\s+\d+[A-Za-z0-9]*\s+[—\-–]\s*[^\n]+)", re.MULTILINE)
 
 
-def split_sections(text: str) -> List[Tuple[str, Optional[str], Optional[str]]]:
+def split_sections(text: str) -> List[Tuple[str, Optional[str], Optional[str], Optional[str], Optional[str]]]:
     """
-    Split text by headings where possible. Returns tuples of (section_id, heading, body).
-    Falls back to a single chunk when headings are not detected.
+    Split text into sections using Cap. 615-style numbering (e.g., 53ZRD.).
+    Track Division/Subdivision headers for context.
+    Returns tuples of (section_id, heading, body, division, subdivision).
     """
     matches = list(SECTION_PATTERN.finditer(text)) + list(SCHEDULE_PATTERN.finditer(text))
     matches = sorted(matches, key=lambda m: m.start())
     if not matches:
-        return [(None, None, text)]
+        return [(None, None, text, None, None)]
 
-    slices: List[Tuple[str, Optional[str], Optional[str]]] = []
+    divisions = sorted([(m.start(), m.group(1).strip()) for m in DIVISION_PATTERN.finditer(text)], key=lambda x: x[0])
+    subdivisions = sorted([(m.start(), m.group(1).strip()) for m in SUBDIVISION_PATTERN.finditer(text)], key=lambda x: x[0])
+
+    def latest_heading(pos: int, items: List[Tuple[int, str]]) -> Optional[str]:
+        active = [h for start, h in items if start <= pos]
+        return active[-1] if active else None
+
+    slices: List[Tuple[str, Optional[str], Optional[str], Optional[str], Optional[str]]] = []
     for idx, match in enumerate(matches):
         start = match.end()
         end = matches[idx + 1].start() if idx + 1 < len(matches) else len(text)
         body = text[start:end].strip()
-        header = match.groupdict().get("header") or match.groupdict().get("num") or ""
+
+        header = match.groupdict().get("num") or match.groupdict().get("header") or ""
         heading_raw = match.groupdict().get("title") or ""
-        section_id = header.strip()
-        heading = heading_raw.strip(" -–—")
-        prefix = f"{header} {heading}".strip()
-        content = f"{prefix}\n{body}".strip()
-        slices.append((section_id, heading, content))
+        section_id = header.strip().rstrip(".")
+        heading = heading_raw.strip(" -–—.")
+
+        div = latest_heading(match.start(), divisions)
+        subdiv = latest_heading(match.start(), subdivisions)
+
+        prefix_lines = []
+        if div:
+            prefix_lines.append(div)
+        if subdiv:
+            prefix_lines.append(subdiv)
+        header_line = " ".join([p for p in [header, heading] if p])
+        if header_line:
+            prefix_lines.append(header_line)
+        content = "\n".join(prefix_lines + [body]).strip()
+        slices.append((section_id, heading, content, div, subdiv))
     return slices
 
 
-def chunk_text(section_id: Optional[str], heading: Optional[str], text: str) -> Iterable[Chunk]:
+def chunk_text(section_id: Optional[str], heading: Optional[str], text: str, division: Optional[str], subdivision: Optional[str]) -> Iterable[Chunk]:
     """Section-aware chunking with soft token sizing."""
     tokens = text.split()
     max_tokens = settings.max_chunk_tokens
@@ -98,7 +130,7 @@ def chunk_text(section_id: Optional[str], heading: Optional[str], text: str) -> 
     overlap = settings.overlap_tokens
 
     if len(tokens) <= max_tokens:
-        yield Chunk(text=text, section=section_id, heading=heading, source="amlo_cap615")
+        yield Chunk(text=text, section=section_id, heading=heading, division=division, subdivision=subdivision, source="amlo_cap615")
         return
 
     start = 0
@@ -108,7 +140,7 @@ def chunk_text(section_id: Optional[str], heading: Optional[str], text: str) -> 
         if len(slice_tokens) < min_tokens and start != 0:
             break
         chunk_text_val = " ".join(slice_tokens)
-        yield Chunk(text=chunk_text_val, section=section_id, heading=heading, source="amlo_cap615")
+        yield Chunk(text=chunk_text_val, section=section_id, heading=heading, division=division, subdivision=subdivision, source="amlo_cap615")
         if end == len(tokens):
             break
         start = end - overlap
@@ -129,8 +161,8 @@ def ingest(source: Path, out_path: Path) -> None:
     cleaned = clean(raw_text)
     sections = split_sections(cleaned)
     chunks: List[Chunk] = []
-    for section_id, heading, body in sections:
-        for ch in chunk_text(section_id, heading, body):
+    for section_id, heading, body, division, subdivision in sections:
+        for ch in chunk_text(section_id, heading, body, division, subdivision):
             chunks.append(ch)
 
     out_path.parent.mkdir(parents=True, exist_ok=True)

@@ -6,7 +6,7 @@ from typing import Dict, List, Optional
 from rich.console import Console
 
 from .config import paths
-from .pipeline import call_llm
+from .pipeline import call_llm, load_erc_whitelist, enforce_erc_whitelist
 from .prompts import build_prompt
 
 console = Console()
@@ -76,30 +76,53 @@ def main():
     parser.add_argument("--out", type=Path, default=paths.processed_dir / "all_rules.json", help="Output JSON file")
     parser.add_argument("--max_context_tokens", type=int, default=1500, help="Max tokens per grouped context")
     parser.add_argument("--limit", type=int, default=None, help="Optional limit for quick runs")
+    parser.add_argument("--offset", type=int, default=0, help="Skip this many grouped contexts before processing")
+    parser.add_argument("--count", type=int, default=None, help="Process only this many grouped contexts after offset")
     parser.add_argument("--dry_run", action="store_true", help="Skip LLM calls; emit prompts only")
+    parser.add_argument(
+        "--erc_keywords",
+        type=str,
+        default="virtual asset,va service,token,transfer,identity,register,licence,license",
+        help="Comma-separated keywords; if none are found in a section context, skip calling the LLM.",
+    )
     args = parser.parse_args()
 
     chunks = load_chunks(args.chunks)
     grouped = group_by_section(chunks, max_tokens=args.max_context_tokens)
     if args.limit:
         grouped = grouped[: args.limit]
+    if args.offset:
+        grouped = grouped[args.offset :]
+    if args.count is not None:
+        grouped = grouped[: args.count]
     console.print(f"[cyan]Processing {len(grouped)} grouped contexts...")
+
+    allowed = load_erc_whitelist(paths.erc_whitelist)
+    whitelist_text = "\n".join(sorted(allowed))
+    kw_list = [k.strip().lower() for k in args.erc_keywords.split(",") if k.strip()]
 
     all_rules: List[Dict] = []
     for idx, item in enumerate(grouped, 1):
         context = item["context"]
         section_label = item.get("section") or f"group-{idx}"
         query = "Extract enforceable obligations in this section."
-        prompt = build_prompt(context=context, query=query)
+        prompt = build_prompt(context=context, query=query, erc_whitelist=whitelist_text)
         if args.dry_run:
             console.print(f"[yellow]Dry run for section {section_label}; prompt length={len(prompt)}")
+            continue
+        ctx_lower = context.lower()
+        if kw_list and not any(kw in ctx_lower for kw in kw_list):
+            console.print(f"[cyan]Skipping section {section_label}: no ERC keywords matched.")
             continue
         resp = call_llm(prompt)
         rules = parse_json_response(resp)
         for rule in rules:
             rule["section"] = item.get("section")
             rule["heading"] = item.get("heading")
-        all_rules.extend(rules)
+            enforce_erc_whitelist(rule, allowed)
+        # Keep only rules with actionable ERC-3643 mapping
+        filtered = [r for r in rules if r.get("erc_3643") and r["erc_3643"] != "N/A (off-chain)"]
+        all_rules.extend(filtered)
         if idx % 10 == 0:
             console.print(f"[green]Processed {idx}/{len(grouped)} contexts; total rules: {len(all_rules)}")
 

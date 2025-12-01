@@ -25,8 +25,17 @@ Rules:
 """
 
 
-def build_prompt(context: str, query: str) -> str:
+def build_prompt(context: str, query: str, erc_whitelist: str = "") -> str:
     """Create the full prompt string for the LLM."""
+    whitelist_block = ""
+    if erc_whitelist:
+        whitelist_block = f"""ERC-3643 allowed modules/functions:
+{erc_whitelist}
+
+Rules for erc_3643 field:
+- Choose ONLY from the allowed list above; do not invent new functions.
+- If no suitable ERC-3643 hook applies, set "erc_3643": "N/A (off-chain)".\n"""
+
     return f"""{ROLE_PROMPT}
 
 Task: Extract enforceable obligations relevant to: "{query}"
@@ -34,5 +43,6 @@ Task: Extract enforceable obligations relevant to: "{query}"
 Context:
 {context}
 
+{whitelist_block}
 {TASK_INSTRUCTION}
 Return ONLY valid JSON."""

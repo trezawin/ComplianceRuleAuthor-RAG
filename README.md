@@ -20,12 +20,14 @@ python3.11 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
-2) Add the AMLO source into `data/raw/`, e.g., `cap615.pdf`, `cap615.rtf`, or `cap615.txt`.
+2) Add the AMLO source into `data/raw/`, e.g., `cap615.pdf`, `cap615.rtf`, or `cap615.txt`. Add the ERC-3643 spec/API text into `data/raw/erc-3643.txt`.
 
 3) Ingest + index:
 ```bash
-python -m src.ingest --source data/raw/cap615.rtf --out data/processed/cap615.jsonl
-python -m src.index --chunks data/processed/cap615.jsonl --index_out data/processed/embeddings.npy --bm25_out data/processed/bm25.pkl
+python -m src.ingest --source data/raw/cap615.pdf --out data/processed/cap615.jsonl
+python scripts/ingest_erc3643.py --source data/raw/erc-3643.txt --out data/processed/erc3643.jsonl
+python scripts/build_erc_whitelist.py --source data/raw/erc-3643.txt --out data/processed/erc3643_whitelist.json
+python -m src.index --chunks data/processed/cap615.jsonl --index_out data/processed/embeddings.npy --bm25_out data/processed/bm25.pkl --extra data/processed/erc3643.jsonl
 ```
 If you’re on macOS with M1/M2 and hit GPU-related crashes, set CPU mode in `src/config.py` (`device="cpu"`).
 
@@ -40,6 +42,18 @@ Provide `OPENAI_API_KEY` (or update `LLM_PROVIDER` in `src/pipeline.py`) to actu
 python -m src.batch_extract --chunks data/processed/cap615.jsonl --out data/processed/all_rules.json
 ```
 Use `--limit 5 --dry_run` to test quickly; set `OPENAI_API_KEY` before running to perform real calls.
+
+ERC-3643 grounding: prompts include an ERC-3643 whitelist and post-validation forces `erc_3643` to either a whitelisted function/module or `N/A (off-chain)`. Keep `erc3643_whitelist.json` current and include `erc3643.jsonl` in indexing (`--extra`) to keep mappings accurate.
+
+6) Summarize chunks (for inspection):
+```bash
+python scripts/summarize_chunks.py --chunks data/processed/cap615.jsonl --show 3
+```
+
+7) Coverage sanity check (does chunking match the PDF):
+```bash
+python scripts/coverage_check.py --pdf data/raw/cap-615.pdf --chunks data/processed/cap615.jsonl --show_missing 10
+```
 
 5) Serve an API:
 ```bash

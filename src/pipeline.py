@@ -1,9 +1,10 @@
 import json
 import os
 import pickle
+import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Set
 
 import argparse
 import numpy as np
@@ -39,6 +40,65 @@ def load_bm25(bm25_path: Path):
     with bm25_path.open("rb") as f:
         payload = pickle.load(f)
     return payload["bm25"], payload["corpus"], payload["chunks"]
+
+
+def load_erc_whitelist(path: Path) -> Set[str]:
+    fallback = {
+        "IdentityRegistry",
+        "Compliance",
+        "ComplianceModule",
+        "TrustedIssuersRegistry",
+        "ClaimTopicsRegistry",
+        "Token",
+        "ModularCompliance",
+        "IdentityRegistryStorage",
+        "Recovery",
+        "canTransfer",
+        "isVerified",
+        "forceTransfer",
+        "freeze",
+        "unfreeze",
+        "pause",
+        "unpause",
+        "recoverAddress",
+        "registerIdentity",
+        "updateIdentity",
+        "deleteIdentity",
+        "batchTransfer",
+    }
+    if not path.exists():
+        return fallback
+    try:
+        data = json.loads(path.read_text())
+        items = set(data.get("modules_functions", []))
+        return items or fallback
+    except Exception:
+        return fallback
+
+
+def enforce_erc_whitelist(rule: Dict, allowed: Set[str]) -> Dict:
+    val = rule.get("erc_3643")
+    if not val:
+        rule["erc_3643"] = "N/A (off-chain)"
+        return rule
+    # split on common separators
+    parts = []
+    for chunk in re.split(r"[,&/]|and", str(val)):
+        name = chunk.strip()
+        if not name:
+            continue
+        parts.append(name)
+    normalized = []
+    for p in parts:
+        for allowed_item in allowed:
+            if p.lower() == allowed_item.lower():
+                normalized.append(allowed_item)
+                break
+    if normalized:
+        rule["erc_3643"] = ", ".join(sorted(set(normalized)))
+    else:
+        rule["erc_3643"] = "N/A (off-chain)"
+    return rule
 
 
 def normalize(scores: List[float]) -> List[float]:
@@ -134,8 +194,20 @@ def run_extraction(query: str, top_k: int, dry_run: bool = False) -> Dict:
     retriever = Retriever()
     results = retriever.search(query, k=top_k)
     context = render_context(results)
-    prompt = build_prompt(context=context, query=query)
+    allowed = load_erc_whitelist(paths.erc_whitelist)
+    whitelist_text = "\n".join(sorted(allowed))
+    prompt = build_prompt(context=context, query=query, erc_whitelist=whitelist_text)
     response = None if dry_run else call_llm(prompt)
+    if response:
+        try:
+            parsed = json.loads(response)
+            # normalize into list
+            if isinstance(parsed, dict):
+                parsed = [parsed]
+            cleaned = [enforce_erc_whitelist(r, allowed) for r in parsed if isinstance(r, dict)]
+            response = json.dumps(cleaned, ensure_ascii=False, indent=2)
+        except Exception:
+            pass
     return {
         "query": query,
         "top_k": top_k,
